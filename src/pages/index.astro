@@ -1,0 +1,499 @@
+---
+// Dette er Astro's "frontmatter" - kode der kører på serveren
+// Her kan vi importere ting vi har brug for
+---
+
+<!DOCTYPE html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tone → SVG generator</title>
+    
+    <!-- Tailwind CSS fra CDN - så vi kan style med Tailwind klasser -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lille animation til de nye bokse -->
+    <style>
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-100 min-h-screen p-8">
+    <!-- Container der holder alt sammen, max bredde og centreret -->
+    <div class="max-w-4xl mx-auto">
+      
+      <!-- Overskrift - stor og fed -->
+      <h1 class="text-4xl font-bold text-center mb-8 text-blue-600">
+        🎵 Tone → SVG generator
+      </h1>
+
+      <!-- Kontrolpanel med knapper -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Kontroller</h2>
+        
+        <!-- Knapper i en række -->
+        <div class="flex flex-wrap gap-4 mb-4">
+          <!-- Start mikrofon knap -->
+          <button 
+            id="startMic"
+            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            🎤 Start mikrofon
+          </button>
+
+          <!-- Stop mikrofon knap (starter som disabled) -->
+          <button 
+            id="stopMic"
+            disabled
+            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            ⏹️ Stop mikrofon
+          </button>
+        </div>
+
+        <!-- Upload lydfil -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">
+            📁 Upload lydfil (valgfrit)
+          </label>
+          <input 
+            type="file" 
+            id="fileInput" 
+            accept="audio/*"
+            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+        </div>
+
+        <!-- Hastighed slider -->
+        <div>
+          <label class="block text-sm font-medium mb-2">
+            ⏱️ Hastighed: <span id="speedDisplay">200</span> ms
+          </label>
+          <input 
+            id="intervalMs" 
+            type="range" 
+            value="200" 
+            min="50" 
+            max="1000" 
+            step="50"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+      </div>
+
+      <!-- Info boks der viser hvad der bliver detekteret -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Registreret tone</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Tone navn -->
+          <div>
+            <p class="text-sm text-gray-600">Tone:</p>
+            <p class="text-3xl font-bold text-blue-600" id="detectedNote">—</p>
+          </div>
+          <!-- Frekvens -->
+          <div>
+            <p class="text-sm text-gray-600">Frekvens:</p>
+            <p class="text-3xl font-bold text-purple-600">
+              <span id="detectedFreq">—</span> Hz
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- "Papiret" hvor SVG ikoner vises -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Dit musikstykke</h2>
+        <!-- Scrollbar container hvis der er mange SVG'er -->
+       <div 
+  id="paper" 
+  class="bg-gray-50 p-4 rounded min-h-[200px]"
+  style="width: 100%;"
+>
+  <!-- SVG’er tilføjes her -->
+</div>
+      </div>
+
+    </div>
+
+    <!-- JavaScript kode - inline så alt er ét sted -->
+    <!-- is:inline fortæller Astro at ikke tjekke TypeScript her -->
+    <script is:inline>
+      // ==========================================
+      // 1. FIND HTML ELEMENTER
+      // ==========================================
+      // Vi finder alle knapper og bokse vi skal bruge
+      const startMicBtn = document.getElementById("startMic");
+      const stopMicBtn = document.getElementById("stopMic");
+      const fileInput = document.getElementById("fileInput");
+      const paper = document.getElementById("paper");
+      const detectedNoteEl = document.getElementById("detectedNote");
+      const detectedFreqEl = document.getElementById("detectedFreq");
+      const intervalInput = document.getElementById("intervalMs");
+      const speedDisplay = document.getElementById("speedDisplay");
+
+      // ==========================================
+      // 2. VARIABLER TIL LYDDETEKTION
+      // ==========================================
+      // Disse holder styr på mikrofonen og lyd-processering
+      let audioContext; // Browser's lyd-motor
+      let mediaStreamSource; // Lyd fra mikrofonen
+      let scriptProcessor; // Processer der analyserer lyden
+      let micStream; // Mikrofon stream
+
+      // ==========================================
+      // 3. MAPPING FRA TONE TIL SVG FILER
+      // ==========================================
+      // Her mapper vi hver tone til sin SVG fil i public/doodles/
+      const noteSvgMap = {
+        "C": "/doodles/C.svg",
+        "C#": "/doodles/C#.svg",
+        "D": "/doodles/D.svg",
+        "D#": "/doodles/D#.svg",
+        "E": "/doodles/E.svg",
+        "F": "/doodles/F.svg",
+        "F#": "/doodles/F#.svg",
+        "G": "/doodles/G.svg",
+        "G#": "/doodles/G#.svg",
+        "A": "/doodles/A.svg",
+        "A#": "/doodles/A#.svg",
+        "B": "/doodles/B.svg"
+      };
+
+      // ==========================================
+      // 4. OPDATER HASTIGHED DISPLAY
+      // ==========================================
+      // Når brugeren ændrer slider, vis værdien
+      intervalInput.addEventListener("input", (e) => {
+        speedDisplay.textContent = e.target.value;
+      });
+
+      // ==========================================
+      // 5. KONVERTER FREKVENS TIL TONE-NAVN
+      // ==========================================
+      // Denne funktion tager en frekvens (fx 440 Hz)
+      // og finder ud af hvilken tone det er (fx A)
+      function freqToNoteName(frequency) {
+        // Hvis ingen frekvens, return null
+        if (!frequency || frequency <= 0) return null;
+        
+        // Beregn MIDI note nummer (A4 = 440 Hz = MIDI 69)
+        const midi = Math.round(12 * (Math.log2(frequency / 440)) + 69);
+        
+        // De 12 toner i en oktav
+        const names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        
+        // Find tone-navnet (modulo 12 for at få det inden for 0-11)
+        const noteIndex = midi % 12;
+        const noteName = names[noteIndex];
+        
+        console.log(`Frekvens: ${frequency.toFixed(1)} Hz → MIDI: ${midi} → Note: ${noteName}`);
+        
+        return { 
+          name: noteName, 
+          midi: midi 
+        };
+      }
+
+      // ==========================================
+      // 6. AUTO-CORRELATION (Pitch Detection)
+      // ==========================================
+      // Dette er "hjernen" der finder tonehøjden
+      // Den sammenligner lydbølgen med sig selv forskudt
+      function autoCorrelate(buffer, sampleRate) {
+        const SIZE = buffer.length;
+        
+        // Beregn RMS (Root Mean Square) - lydstyrken
+        let rms = 0;
+        for (let i = 0; i < SIZE; i++) {
+          rms += buffer[i] * buffer[i];
+        }
+        rms = Math.sqrt(rms / SIZE);
+
+        // Hvis lyden er for svag, ignorer den
+        if (rms < 0.01) return -1;
+
+        // Find bedste correlation
+        let bestOffset = -1;
+        let bestCorrelation = 0;
+        let lastCorrelation = 1;
+        
+        // Start fra en lille offset for at undgå divide by zero
+        // Og begræns søgningen til rimelige frekvenser
+        const minOffset = Math.floor(sampleRate / 1000); // Max 1000 Hz
+        const maxOffset = Math.floor(sampleRate / 50);   // Min 50 Hz
+
+        for (let offset = minOffset; offset < maxOffset; offset++) {
+          let correlation = 0;
+          
+          for (let i = 0; i < SIZE - offset; i++) {
+            correlation += Math.abs(buffer[i] - buffer[i + offset]);
+          }
+          
+          correlation = 1 - (correlation / SIZE);
+          
+          // Find peaks i correlation
+          if (correlation > 0.9 && correlation > lastCorrelation) {
+            if (correlation > bestCorrelation) {
+              bestCorrelation = correlation;
+              bestOffset = offset;
+            }
+          }
+          
+          lastCorrelation = correlation;
+        }
+
+        if (bestOffset !== -1 && bestCorrelation > 0.9) {
+          return sampleRate / bestOffset;
+        }
+        
+        return -1;
+      }
+
+      // ==========================================
+      // 7. HENT SVG FRA DINE FILER
+      // ==========================================
+      // Henter din egen SVG fil fra public/doodles/
+      async function getSvgForNote(name) {
+        const path = noteSvgMap[name];
+        if (!path) {
+          console.log("Ingen SVG path for:", name);
+          return null;
+        }
+
+        try {
+          // Hent SVG filen
+          const response = await fetch(path);
+          
+          // Tjek om filen blev fundet
+          if (!response.ok) {
+            console.log("Kunne ikke finde:", path);
+            return null;
+          }
+          
+          // Få SVG teksten
+          const svgText = await response.text();
+          return svgText;
+          
+        } catch (error) {
+          console.log("Fejl ved hentning af SVG:", error);
+          return null;
+        }
+      }
+
+      // ==========================================
+      // 8. VIS EN TONE PÅ "PAPIRET"
+      // ==========================================
+      // Tilføjer din SVG til paper div'en
+      async function renderNoteOnPaper(name) {
+        // Hent SVG teksten fra din fil
+        const svgHtml = await getSvgForNote(name);
+        
+        // Hvis vi ikke kunne hente SVG'en, vis en fallback boks
+        if (!svgHtml) {
+          console.log("Bruger fallback for:", name);
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = `
+            <svg viewBox="0 0 50 50" class="w-10 h-full">
+              <rect x="5" y="5" width="90" height="90" rx="15" fill="#9ca3af"/>
+              <text x="50" y="60" font-size="28" font-weight="bold" text-anchor="middle" fill="white">${name}</text>
+            </svg>
+          `;
+          const svgEl = wrapper.firstElementChild;
+          svgEl.classList.add("flex-shrink-0");
+          paper.appendChild(svgEl);
+          paper.scrollLeft = paper.scrollWidth;
+          return;
+        }
+        
+        // Parse SVG HTML
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = svgHtml;
+
+        // Få fat i SVG elementet
+        const svgEl = wrapper.firstElementChild;
+        
+        if (!svgEl) {
+          console.log("Kunne ikke parse SVG for:", name);
+          return;
+        }
+        
+        // Tilføj styling (størrelse og animation)
+        svgEl.classList.add("w-24", "h-24", "flex-shrink-0");
+        svgEl.style.animation = "slideIn 0.3s ease-out";
+
+        // Tilføj til papiret
+        paper.appendChild(svgEl);
+        
+        // Scroll til højre så man ser den nye
+        paper.scrollLeft = paper.scrollWidth;
+      }
+
+      // ==========================================
+      // 9. OPDATER INFO-BOKSEN
+      // ==========================================
+      // Viser hvilken tone og frekvens der blev detekteret
+      function updateDetected(name, freq) {
+        detectedNoteEl.textContent = name;
+        detectedFreqEl.textContent = freq.toFixed(1); // 1 decimal
+      }
+
+      // ==========================================
+      // 10. START MIKROFON
+      // ==========================================
+      // Starter mikrofon og lytter efter toner
+      async function startMic() {
+        try {
+          // Bed om adgang til mikrofonen
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          
+          // Opret lyd-context (browser's lyd-motor)
+          audioContext = new AudioContext();
+          
+          // Forbind mikrofonen til audio context
+          mediaStreamSource = audioContext.createMediaStreamSource(micStream);
+          
+          // Opret processor til at analysere lyden
+          scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+
+          // Forbind mikrofon → processor → output
+          mediaStreamSource.connect(scriptProcessor);
+          scriptProcessor.connect(audioContext.destination);
+
+          // Hver gang der er ny lyd-data, analyser den
+          let lastNoteTime = 0; // Tidsstempel for sidste note
+          const minTimeBetweenNotes = 100; // Minimum 100ms mellem noter
+          
+          scriptProcessor.onaudioprocess = async (e) => {
+            // Få lyd-dataen
+            const buffer = e.inputBuffer.getChannelData(0);
+            
+            // Tjek om nok tid er gået siden sidste note
+            const now = Date.now();
+            if (now - lastNoteTime < minTimeBetweenNotes) {
+              return; // Skip denne analyse
+            }
+            
+            // Find frekvensen
+            const freq = autoCorrelate(buffer, audioContext.sampleRate);
+
+            // Debug: vis hvad vi får
+            if (freq > 0) {
+              console.log("✓ Fandt frekvens:", freq.toFixed(1), "Hz");
+            }
+
+            // Hvis vi fandt en tone
+            if (freq > 0) {
+              const note = freqToNoteName(freq);
+              if (note && note.name) {
+                // Vis din SVG og opdater info
+                await renderNoteOnPaper(note.name);
+                updateDetected(note.name, freq);
+                lastNoteTime = now; // Opdater tidsstempel
+              }
+            }
+          };
+
+          // Opdater knapper
+          startMicBtn.disabled = true;
+          stopMicBtn.disabled = false;
+          
+        } catch (error) {
+          alert("Kunne ikke få adgang til mikrofonen. Tillad venligst mikrofon adgang.");
+          console.error(error);
+        }
+      }
+
+      // ==========================================
+      // 11. STOP MIKROFON
+      // ==========================================
+      // Stopper mikrofonen og rydder op
+      function stopMic() {
+        // Afbryd alt
+        if (scriptProcessor) scriptProcessor.disconnect();
+        if (mediaStreamSource) mediaStreamSource.disconnect();
+        if (micStream) micStream.getTracks().forEach((t) => t.stop());
+        if (audioContext) audioContext.close();
+
+        // Opdater knapper
+        startMicBtn.disabled = false;
+        stopMicBtn.disabled = true;
+      }
+
+      // ==========================================
+      // 12. PROCES UPLOADET LYDFIL
+      // ==========================================
+      // Når brugeren uploader en lydfil, analyser den
+      async function processAudioBuffer(audioBuffer) {
+        const rate = audioBuffer.sampleRate; // Sample rate
+        const data = audioBuffer.getChannelData(0); // Lyd data
+        const chunk = 2048; // Hvor meget vi analyserer af gangen
+        const interval = parseInt(intervalInput.value); // Hastighed
+
+        // Gå igennem hele lydfilen i chunks
+        for (let i = 0; i < data.length; i += chunk) {
+          // Få en lille del af lyden
+          const slice = data.slice(i, i + chunk);
+          
+          // Find frekvensen
+          const freq = autoCorrelate(slice, rate);
+
+          // Hvis vi fandt en tone
+          if (freq > 0) {
+            const note = freqToNoteName(freq);
+            if (note) {
+              // Vis din SVG og opdater info
+              await renderNoteOnPaper(note.name);
+              updateDetected(note.name, freq);
+              
+              // Vent lidt før næste (så det ikke går for hurtigt)
+              await new Promise((res) => setTimeout(res, interval));
+            }
+          }
+        }
+      }
+
+      // ==========================================
+      // 13. EVENT LISTENERS (knap-klik)
+      // ==========================================
+      
+      // Når der vælges en fil
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          // Læs filen som array buffer
+          const arrayBuf = await file.arrayBuffer();
+          
+          // Decode til audio buffer
+          audioContext = new AudioContext();
+          const audioBuf = await audioContext.decodeAudioData(arrayBuf);
+
+          // Proces lydfilen
+          await processAudioBuffer(audioBuf);
+          
+        } catch (error) {
+          alert("Kunne ikke læse lydfilen. Prøv en anden fil.");
+          console.error(error);
+        }
+      });
+
+      // Når "Start mikrofon" klikkes
+      startMicBtn.addEventListener("click", startMic);
+
+      // Når "Stop mikrofon" klikkes
+      stopMicBtn.addEventListener("click", stopMic);
+    </script>
+
+  </body>
+</html>

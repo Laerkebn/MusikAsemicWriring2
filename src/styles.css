@@ -1,0 +1,43 @@
+body {
+  font-family: system-ui, sans-serif;
+  padding: 20px;
+  background: #f7f7fb;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.file-label {
+  background: #ddd;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.paper {
+  min-height: 150px;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+svg.icon {
+  width: 48px;
+  height: 48px;
+  padding: 6px;
+  background: #fefefe;
+  border-radius: 8px;
+  box-shadow: 0 0 3px rgba(0,0,0,0.05);
+}
