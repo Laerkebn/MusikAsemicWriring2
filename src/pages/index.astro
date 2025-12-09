@@ -1,7 +1,11 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import "../styles.css";
+import Udseene from "./udseene.astro";
+import Soft from "./soft.astro";
+import Rough from "./rough.astro";
 ---
+
 <!DOCTYPE html>
 <html lang="da">
 <head>
@@ -25,133 +29,30 @@ import "../styles.css";
       min-height: 100vh;
       padding: 2rem;
     }
+    .style-btn {
+      transition: all 0.2s ease;
+    }
+    .style-btn.active {
+      background-color: #1E1E1E;
+      color: white;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 <body>
-  <!-- Titel -->
-  <h1 class="text-4xl font-bold text-center mb-8 text-[#FFFFF0]">
-    🎵 Tone → SVG generator
-  </h1>
+    <Soft />
+    <Rough />
+    <Udseene />
 
-  <!-- Samlet boks -->
-  <div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 space-y-8 max-w-4xl mx-auto">
-    <!-- Knapper -->
-    <div>
-      <h2 class="text-xl text-[#262626] font-bold mb-4">Generer din sang vibe:</h2>
-      <div class="flex flex-wrap gap-4">
-        <button 
-          id="startMic"
-          class="bg-green-900 hover:bg-green-800 text-[#FFFFF0] font-bold py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed">
-          ▶ Start mikrofon
-        </button>
-        <button 
-          id="stopMic"
-          disabled
-          class="bg-red-900 hover:bg-red-800 text-[#FFFFF0] font-bold py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed">
-          ⏹ Stop mikrofon
-        </button>
-      </div>
-    </div>
 
-    <!-- Fil upload -->
-    <div>
-      <label class="block text-sm text-[#262626] font-medium mb-2">📁 Upload lydfil (valgfrit)</label>
-      <input 
-        type="file" 
-        id="fileInput" 
-        accept="audio/*"
-        class="block w-full text-sm text-gray-500
-               file:mr-4 file:py-2 file:px-4 file:rounded
-               file:border-0 file:text-sm file:font-semibold
-               file:bg-gray-400 file:text-[#FFFFF0] hover:file:bg-gray-300"
-      />
-    </div>
-
-    <!-- Slider -->
-    <div>
-      <label class="block text-sm font-medium mb-2">
-        ⏱️ Hastighed: <span id="speedDisplay">200</span> ms
-      </label>
-      <input 
-        id="intervalMs"
-        type="range"
-        value="200"
-        min="50"
-        max="1000"
-        step="50"
-        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-        style="accent-color: #9ca3af;"
-      />
-    </div>
-
-    <!-- Farve vælger -->
-    <div>
-      <label class="block text-sm text-[#262626] font-medium mb-2">
-        Vælg farve:
-      </label>
-      <input 
-        id="colorPicker"
-        type="color"
-        value="#1E1E1E"
-        class="w-20 h-10 rounded cursor-pointer border-2 border-gray-400"
-      />
-    </div>
-
-    <!-- Tone info -->
-    <div>
-      <h2 class="text-xl font-semibold mb-4">Registreret tone</h2>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <p class="text-sm text-[#262626]">Tone:</p>
-          <p class="text-3xl font-bold text-[#262626]" id="detectedNote">—</p>
-        </div>
-        <div>
-          <p class="text-sm text-[#262626]">Frekvens:</p>
-          <p class="text-3xl font-bold text-[#262626]">
-            <span id="detectedFreq">—</span> Hz
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- A4 hvor SVG ikoner vises -->
-  <div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 mt-8 max-w-4xl mx-auto">
-    <h2 class="text-xl text-[#262626] font-semibold mb-4">Dit musikstykke</h2>
-
-    <!-- Gem A4 som SVG knap -->
-    <button 
-      id="saveSvg"
-      class="bg-gray-400 hover:bg-gray-300 text-[#FFFFF0] font-semibold p-2 px-3 rounded m-4">
-      💾 Gem som SVG
-    </button>
-
-    <!-- A4 fast størrelse -->
-    <div 
-      id="paper" 
-      class="bg-gray-50 p-4 rounded relative overflow-hidden"
-      style="width: 794px; height: 1123px; margin: auto; border: 1px solid-[#FFFFF0];">
-    </div>
-  </div>
 
   <script type="module">
+    
     // ==========================================
     // KONSTANTER
     // ==========================================
-    const NOTE_SVG_MAP = {
-      "C": "/doodles/C.svg",
-      "C#": "/doodles/Ckryds.svg",
-      "D": "/doodles/D.svg",
-      "D#": "/doodles/Dkryds.svg",
-      "E": "/doodles/E.svg",
-      "F": "/doodles/F.svg",
-      "F#": "/doodles/Fkryds.svg",
-      "G": "/doodles/G.svg",
-      "G#": "/doodles/Gkryds.svg",
-      "A": "/doodles/A.svg",
-      "A#": "/doodles/Akryds.svg",
-      "B": "/doodles/B.svg"
-    };
+    let NOTE_SVG_MAP = window.ROUGH_STYLE_MAP; // Start med rough style
+    let currentStyle = 'rough';
 
     const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const MIN_TIME_BETWEEN_NOTES = 100;
@@ -173,6 +74,8 @@ import "../styles.css";
     const intervalInput = document.getElementById("intervalMs");
     const speedDisplay = document.getElementById("speedDisplay");
     const colorPicker = document.getElementById("colorPicker");
+    const softStyleBtn = document.getElementById("softStyleBtn");
+    const roughStyleBtn = document.getElementById("roughStyleBtn");
 
     // ==========================================
     // GLOBALE VARIABLER
@@ -183,6 +86,27 @@ import "../styles.css";
     let micStream;
     let currentColor = "#1E1E1E";
 
+    // ==========================================
+    // STYLE SWITCHING
+    // ==========================================
+    
+    function switchStyle(style) {
+      currentStyle = style;
+      
+      if (style === 'soft') {
+        NOTE_SVG_MAP = window.SOFT_STYLE_MAP;
+        softStyleBtn.classList.add('active');
+        roughStyleBtn.classList.remove('active');
+      } else {
+        NOTE_SVG_MAP = window.ROUGH_STYLE_MAP;
+        roughStyleBtn.classList.add('active');
+        softStyleBtn.classList.remove('active');
+      }
+      
+      console.log(`Skiftet til ${style} style`);
+    }
+
+  
     // ==========================================
     // HJÆLPEFUNKTIONER
     // ==========================================
@@ -253,6 +177,8 @@ import "../styles.css";
       const svgHtml = await getSvgForNote(name);
       const wrapper = document.createElement("div");
       
+
+
       // "Frys" farven for denne specifikke SVG
       const frozenColor = currentColor;
       
@@ -280,15 +206,13 @@ import "../styles.css";
       allElements.forEach(el => {
         el.setAttribute('stroke', frozenColor);
         el.setAttribute('fill', 'none');
-        el.removeAttribute('class'); // Fjern class så den ikke påvirkes af globale styles
+        el.removeAttribute('class');
       });
 
-      console.log("Farve anvendt:", frozenColor, "på", allElements.length, "elementer");
-
-      // Beregn position og størrelse - SVG'er kan nu gå helt ud til kanterne
+      // Beregn position og størrelse
       const size = Math.floor(Math.random() * (MAX_SVG_SIZE - MIN_SVG_SIZE) + MIN_SVG_SIZE);
-      const maxLeft = 794; // A4 bredde
-      const maxTop = 1123; // A4 højde
+      const maxLeft = 794;
+      const maxTop = 1123;
       const left = Math.random() * maxLeft;
       const top = Math.random() * maxTop;
 
@@ -397,6 +321,9 @@ import "../styles.css";
       speedDisplay.textContent = e.target.value;
     });
 
+    softStyleBtn.addEventListener("click", () => switchStyle('soft'));
+    roughStyleBtn.addEventListener("click", () => switchStyle('rough'));
+
     fileInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -416,27 +343,24 @@ import "../styles.css";
     stopMicBtn.addEventListener("click", stopMic);
 
     // ==========================================
-    // GEM SOM SVG - SIMPEL OG FUNKTIONEL
+    // GEM SOM SVG
     // ==========================================
     
     const saveSvgBtn = document.getElementById("saveSvg");
     
     saveSvgBtn.addEventListener("click", () => {
       try {
-        // Opret en stor SVG der indeholder alle de små SVG'er
         const svgWrapper = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgWrapper.setAttribute("width", "794");
         svgWrapper.setAttribute("height", "1123");
         svgWrapper.setAttribute("xmlns", "http://www.w3.org/2000/svg");
         
-        // Hvid baggrund
         const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         bg.setAttribute("width", "794");
         bg.setAttribute("height", "1123");
         bg.setAttribute("fill", "#f9fafb");
         svgWrapper.appendChild(bg);
         
-        // Kopier alle SVG'er fra paper
         const svgs = paper.querySelectorAll('svg');
         svgs.forEach(svg => {
           const x = parseFloat(svg.style.left) || 0;
@@ -444,11 +368,9 @@ import "../styles.css";
           const width = parseFloat(svg.style.width) || 50;
           const height = parseFloat(svg.style.height) || 50;
           
-          // Opret en gruppe for hver SVG
           const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
           g.setAttribute("transform", `translate(${x}, ${y})`);
           
-          // Kopier indholdet af SVG'en
           const viewBox = svg.getAttribute('viewBox') || '0 0 50 50';
           const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
           const scale = width / vbW;
@@ -456,7 +378,6 @@ import "../styles.css";
           const innerG = document.createElementNS("http://www.w3.org/2000/svg", "g");
           innerG.setAttribute("transform", `scale(${scale})`);
           
-          // Kopier alle children fra den originale SVG
           Array.from(svg.children).forEach(child => {
             innerG.appendChild(child.cloneNode(true));
           });
@@ -465,13 +386,12 @@ import "../styles.css";
           svgWrapper.appendChild(g);
         });
         
-        // Konverter til string og download
         const svgString = new XMLSerializer().serializeToString(svgWrapper);
         const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-        link.download = `musikstykke-${timestamp}.svg`;
+        link.download = `musikstykke-${currentStyle}-${timestamp}.svg`;
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
@@ -481,6 +401,9 @@ import "../styles.css";
         alert("Kunne ikke gemme som SVG: " + e.message);
       }
     });
+
+    // Initialiser med rough style som aktiv
+    roughStyleBtn.classList.add('active');
   </script>
 </body>
 </html>
