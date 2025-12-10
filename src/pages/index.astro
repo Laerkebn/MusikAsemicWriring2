@@ -33,9 +33,12 @@ import Rough from "./rough.astro";
       transition: all 0.2s ease;
     }
     .style-btn.active {
-      background-color: #1E1E1E;
-      color: white;
+      background-color: #1E1E1E !important;
+      color: white !important;
       transform: scale(1.05);
+    }
+    .style-btn:disabled {
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -60,7 +63,7 @@ import Rough from "./rough.astro";
     const RMS_THRESHOLD = 0.01;
     const CORRELATION_THRESHOLD = 0.9;
     const MIN_SVG_SIZE = 10;
-    const MAX_SVG_SIZE = 500;
+    const MAX_SVG_SIZE = 300;
 
     // ==========================================
     // DOM ELEMENTER
@@ -70,6 +73,7 @@ import Rough from "./rough.astro";
     const fileInput = document.getElementById("fileInput");
     const paper = document.getElementById("paper");
     const detectedNoteEl = document.getElementById("detectedNote");
+    const centerTextEl = document.getElementById("centerText");
     const detectedFreqEl = document.getElementById("detectedFreq");
     const intervalInput = document.getElementById("intervalMs");
     const speedDisplay = document.getElementById("speedDisplay");
@@ -91,18 +95,42 @@ import Rough from "./rough.astro";
     // ==========================================
     
     function switchStyle(style) {
+      // STEP 1: Gem hvilken style der er valgt (enten 'soft' eller 'rough')
       currentStyle = style;
       
+      // STEP 2: Tjek om brugeren har klikket på "Soft aesthetic" knappen
       if (style === 'soft') {
+        
+        // STEP 3: Skift til soft style SVG
         NOTE_SVG_MAP = window.SOFT_STYLE_MAP;
-        softStyleBtn.classList.add('active');
-        roughStyleBtn.classList.remove('active');
+        
+        // STEP 4: Style "Soft aesthetic" knappen som AKTIV
+        softStyleBtn.style.backgroundColor = '#9DA2AE';  
+        softStyleBtn.style.color = '#FFFFF1';            
+        softStyleBtn.disabled = true;                  
+        
+        // STEP 5: Style "Rough aesthetic" knappen som INAKTIV
+        roughStyleBtn.style.backgroundColor = '#D1D5DC'; 
+        roughStyleBtn.style.color = '#FFFFF1';         
+        roughStyleBtn.disabled = false;                
+        
       } else {
+        // STEP 6: Brugeren har klikket på "Rough aesthetic" knappen
+        // STEP 7: Skift til rough style SVG'erne 
         NOTE_SVG_MAP = window.ROUGH_STYLE_MAP;
-        roughStyleBtn.classList.add('active');
-        softStyleBtn.classList.remove('active');
+        
+        // STEP 8: Style "Rough aesthetic" knappen som AKTIV
+        roughStyleBtn.style.backgroundColor = '#9DA2AE';
+        roughStyleBtn.style.color = '#FFFFF1';
+        roughStyleBtn.disabled = true;
+        
+        // STEP 9: Style "Soft aesthetic" knappen som INAKTIV
+        softStyleBtn.style.backgroundColor = '#D1D5DC';
+        softStyleBtn.style.color = '#FFFFF1';
+        softStyleBtn.disabled = false;
       }
       
+      // STEP 10: Log til console så vi kan se det virker (kun for debugging)
       console.log(`Skiftet til ${style} style`);
     }
 
@@ -110,7 +138,6 @@ import Rough from "./rough.astro";
     // ==========================================
     // HJÆLPEFUNKTIONER
     // ==========================================
-    
     function freqToNoteName(frequency) {
       if (!frequency || frequency <= 0) return null;
       const midi = Math.round(12 * (Math.log2(frequency / 440)) + 69);
@@ -209,12 +236,20 @@ import Rough from "./rough.astro";
         el.removeAttribute('class');
       });
 
-      // Beregn position og størrelse
-      const size = Math.floor(Math.random() * (MAX_SVG_SIZE - MIN_SVG_SIZE) + MIN_SVG_SIZE);
-      const maxLeft = 794;
-      const maxTop = 1123;
-      const left = Math.random() * maxLeft;
-      const top = Math.random() * maxTop;
+  // Beregn position og størrelse
+  const size = Math.floor(Math.random() * (MAX_SVG_SIZE - MIN_SVG_SIZE) + MIN_SVG_SIZE);
+
+  // Papirstørrelse (samme som #paper)
+  const paperWidth = 1123;
+  const paperHeight = 794;
+  // Hvor meget SVG'er må stikke udenfor kanten
+  const bleedX = 150;
+  const bleedY = 150;
+
+// Tillad -bleed → paperWidth/Height positions
+const left = Math.random() * (paperWidth + bleedX) - bleedX;
+const top  = Math.random() * (paperHeight + bleedY) - bleedY;
+
 
       // Style SVG element
       Object.assign(svgEl.style, {
@@ -347,63 +382,138 @@ import Rough from "./rough.astro";
     // ==========================================
     
     const saveSvgBtn = document.getElementById("saveSvg");
-    
-    saveSvgBtn.addEventListener("click", () => {
-      try {
-        const svgWrapper = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svgWrapper.setAttribute("width", "794");
-        svgWrapper.setAttribute("height", "1123");
-        svgWrapper.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-        
-        const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        bg.setAttribute("width", "794");
-        bg.setAttribute("height", "1123");
-        bg.setAttribute("fill", "#f9fafb");
-        svgWrapper.appendChild(bg);
-        
-        const svgs = paper.querySelectorAll('svg');
-        svgs.forEach(svg => {
-          const x = parseFloat(svg.style.left) || 0;
-          const y = parseFloat(svg.style.top) || 0;
-          const width = parseFloat(svg.style.width) || 50;
-          const height = parseFloat(svg.style.height) || 50;
-          
-          const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-          g.setAttribute("transform", `translate(${x}, ${y})`);
-          
-          const viewBox = svg.getAttribute('viewBox') || '0 0 50 50';
-          const [vbX, vbY, vbW, vbH] = viewBox.split(' ').map(Number);
-          const scale = width / vbW;
-          
-          const innerG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-          innerG.setAttribute("transform", `scale(${scale})`);
-          
-          Array.from(svg.children).forEach(child => {
-            innerG.appendChild(child.cloneNode(true));
-          });
-          
-          g.appendChild(innerG);
-          svgWrapper.appendChild(g);
-        });
-        
-        const svgString = new XMLSerializer().serializeToString(svgWrapper);
-        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-        link.download = `musikstykke-${currentStyle}-${timestamp}.svg`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-        
-      } catch (e) {
-        console.error("SVG fejl:", e);
-        alert("Kunne ikke gemme som SVG: " + e.message);
-      }
+
+saveSvgBtn.addEventListener("click", () => {
+  try {
+    // Brug samme størrelse som #paper (liggende A4)
+    const PAPER_WIDTH = 1123;
+    const PAPER_HEIGHT = 794;
+
+    const svgWrapper = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgWrapper.setAttribute("width", PAPER_WIDTH);
+    svgWrapper.setAttribute("height", PAPER_HEIGHT);
+    svgWrapper.setAttribute("viewBox", `0 0 ${PAPER_WIDTH} ${PAPER_HEIGHT}`);
+    svgWrapper.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+    // Baggrund
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("width", PAPER_WIDTH);
+    bg.setAttribute("height", PAPER_HEIGHT);
+    bg.setAttribute("fill", "#f9fafb");
+    svgWrapper.appendChild(bg);
+
+    // Alle doodle-SVG'er
+    const svgs = paper.querySelectorAll("svg");
+    svgs.forEach((svg) => {
+      const x = parseFloat(svg.style.left) || 0;
+      const y = parseFloat(svg.style.top) || 0;
+      const width = parseFloat(svg.style.width) || 50;
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("transform", `translate(${x}, ${y})`);
+
+      const viewBox = svg.getAttribute("viewBox") || "0 0 50 50";
+      const [, , vbW] = viewBox.split(" ").map(Number);
+      const scale = width / vbW;
+
+      const innerG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      innerG.setAttribute("transform", `scale(${scale})`);
+
+      Array.from(svg.children).forEach((child) => {
+        innerG.appendChild(child.cloneNode(true));
+      });
+
+      g.appendChild(innerG);
+      svgWrapper.appendChild(g);
     });
 
-    // Initialiser med rough style som aktiv
-    roughStyleBtn.classList.add('active');
+    // ==============================
+    // Navn + hvid boks i midten
+    // ==============================
+    if (centerTextEl) {
+      let nameText = "";
+
+      // Virker både hvis det er <textarea> eller <div contenteditable>
+      if (
+        centerTextEl.tagName === "TEXTAREA" ||
+        centerTextEl.tagName === "INPUT"
+      ) {
+        nameText = centerTextEl.value.trim();
+      } else {
+        nameText = centerTextEl.textContent.trim();
+      }
+
+      if (nameText) {
+  const paperRect = paper.getBoundingClientRect();
+  const textRect = centerTextEl.getBoundingClientRect();
+
+  // Position inde i HTML-papiret
+  const rawX = textRect.left - paperRect.left;
+  const rawY = textRect.top - paperRect.top;
+
+  // HTML-pixels -> SVG-koordinater
+  const scaleX = PAPER_WIDTH / paperRect.width;
+  const scaleY = PAPER_HEIGHT / paperRect.height;
+
+  const svgX = rawX * scaleX;
+  const svgY = rawY * scaleY;
+  const svgWidth = textRect.width * scaleX;
+  const svgHeight = textRect.height * scaleY;
+
+  // Hvid boks bag navnet
+  const nameBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  nameBg.setAttribute("x", svgX);
+  nameBg.setAttribute("y", svgY);
+  nameBg.setAttribute("width", svgWidth);
+  nameBg.setAttribute("height", svgHeight);
+  nameBg.setAttribute("rx", 12);
+  nameBg.setAttribute("ry", 12);
+  nameBg.setAttribute("fill", "#ffffff");
+  svgWrapper.appendChild(nameBg);
+
+  // Selve navnet i midten
+  const nameTextElSvg = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  nameTextElSvg.textContent = nameText;
+  nameTextElSvg.setAttribute("x", svgX + svgWidth / 2);
+  nameTextElSvg.setAttribute("y", svgY + svgHeight / 2);
+  nameTextElSvg.setAttribute("text-anchor", "middle");
+  nameTextElSvg.setAttribute("dominant-baseline", "middle");
+  nameTextElSvg.setAttribute("fill", "#111827");
+  nameTextElSvg.setAttribute("font-size", "72");
+  nameTextElSvg.setAttribute("font-family", "'Acumin Pro Condensed', sans-serif");
+  nameTextElSvg.setAttribute("font-weight", "700");
+  svgWrapper.appendChild(nameTextElSvg);
+}
+
+    }
+
+    // Gem som fil
+    const svgString = new XMLSerializer().serializeToString(svgWrapper);
+    const blob = new Blob([svgString], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    link.download = `musikstykke-${currentStyle}-${timestamp}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("SVG fejl:", e);
+    alert("Kunne ikke gemme som SVG: " + e.message);
+  }
+});
+
+
+    // Initialiser med rough style som aktiv ved opstart
+    roughStyleBtn.style.backgroundColor = '#9DA2AE';
+    roughStyleBtn.style.color = '#FFFFF1';
+    roughStyleBtn.disabled = true;
+    
+    softStyleBtn.style.backgroundColor = '#D1D5DC';
+    softStyleBtn.style.color = '#FFFFF1';
+    softStyleBtn.disabled = false;
   </script>
 </body>
 </html>

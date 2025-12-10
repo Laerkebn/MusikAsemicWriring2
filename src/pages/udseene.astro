@@ -1,4 +1,5 @@
 ---
+import styles from '../styles.css';
 ---
 
 <!-- Titel -->
@@ -7,11 +8,79 @@
 </h1>
 
 <!-- Samlet boks -->
-<div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 space-y-8 max-w-4xl mx-auto">
-  <!-- Knapper -->
+ 
+<div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 mt-8 w-fit mx-auto">
   <div>
-    <h2 class="text-xl text-[#262626] font-bold mb-4">Generer din sang vibe:</h2>
-    <div class="flex flex-wrap gap-4">
+    <h2 class="text-xl text-[#262626] mb-6 font-bold">Generer din sang vibe:</h2>
+    <div class="flex flex-wrap  gap-4"></div>
+  <!-- Slider -->
+  <div>
+    <label class="block  text-sm font-bold mb-2">
+      ⏱️ Hastighed: <span id="speedDisplay">200</span> ms
+    </label>
+    <input 
+      id="intervalMs"
+      type="range"
+      value="200"
+      min="50"
+      max="1000"
+      step="50"
+      class="w-full h-2 bg-gray-200 mb-6 rounded-lg appearance-none cursor-pointer"
+      style="accent-color: #9ca3af;"
+    />
+  </div>
+
+  <!-- Farve vælger -->
+  <div>
+    <label class="block font-bold text-sm text-[#262626] mb-2">
+   Vælg farve:
+    </label>
+    <input 
+      id="colorPicker"
+      type="color"
+      value="#1E1E1E"
+      class="w-20 h-10 mb-6 rounded cursor-pointer border-2 border-gray-400"
+    />
+  </div>
+
+  <!-- Styleknapper -->
+  <div>
+    <label class="block text-sm  text-[#262626] font-bold mb-3">
+    Vælg tegne-stil:
+    </label>
+    <div class="flex mb-6 gap-3">
+  <button 
+  id="roughStyleBtn" 
+  class="style-btn bg-gray-400 hover:bg-gray-300 text-[#FFFFF0] font-bold py-2 px-4 rounded"
+>
+  Rough aesthetic
+</button>
+
+<button 
+  id="softStyleBtn" 
+  class="style-btn bg-gray-400  hover:bg-gray-300 text-[#FFFFF0] font-bold py-2 px-4 rounded"
+>
+  Soft aesthetic
+</button>
+
+
+    </div>
+  </div>
+
+    <!-- Fil upload -->
+  <div>
+    <label class="block text-sm text-[#262626] font-bold mb-2">📁 Upload lydfil (valgfrit)</label>
+    <input 
+      type="file" 
+      id="fileInput" 
+      accept="audio/*"
+      class="block  w-full mb-6 text-sm text-gray-500
+             file:mr-4 file:py-2 file:px-4 file:rounded
+             file:border-0 file:text-sm file:font-semibold
+             file:bg-gray-400 file:text-[#FFFFF0] hover:file:bg-gray-300"
+    />
+  </div>
+    <!-- Knapper -->
       <button 
         id="startMic"
         class="bg-green-900 hover:bg-green-800 text-[#FFFFF0] font-bold py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed">
@@ -24,87 +93,18 @@
         ⏹ Stop mikrofon
       </button>
     </div>
-  </div>
-
-  <!-- Fil upload -->
-  <div>
-    <label class="block text-sm text-[#262626] font-medium mb-2">📁 Upload lydfil (valgfrit)</label>
-    <input 
-      type="file" 
-      id="fileInput" 
-      accept="audio/*"
-      class="block w-full text-sm text-gray-500
-             file:mr-4 file:py-2 file:px-4 file:rounded
-             file:border-0 file:text-sm file:font-semibold
-             file:bg-gray-400 file:text-[#FFFFF0] hover:file:bg-gray-300"
-    />
-  </div>
-
-  <!-- Slider -->
-  <div>
-    <label class="block text-sm font-medium mb-2">
-      ⏱️ Hastighed: <span id="speedDisplay">200</span> ms
-    </label>
-    <input 
-      id="intervalMs"
-      type="range"
-      value="200"
-      min="50"
-      max="1000"
-      step="50"
-      class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-      style="accent-color: #9ca3af;"
-    />
-  </div>
-
-  <!-- Farve vælger -->
-  <div>
-    <label class="block text-sm text-[#262626] font-medium mb-2">
-   Vælg farve:
-    </label>
-    <input 
-      id="colorPicker"
-      type="color"
-      value="#1E1E1E"
-      class="w-20 h-10 rounded cursor-pointer border-2 border-gray-400"
-    />
-  </div>
-
-  <!-- Styleknapper -->
-  <div>
-    <label class="block text-sm text-[#262626] font-medium mb-3">
-    Vælg tegne-stil:
-    </label>
-    <div class="flex gap-3">
-  <button 
-  id="roughStyleBtn" 
-  class="style-btn bg-gray-400 hover:bg-gray-300 text-[#FFFFF0] font-bold py-2 px-4 rounded"
->
-  Rough aesthetic
-</button>
-
-<button 
-  id="softStyleBtn" 
-  class="style-btn bg-gray-400 hover:bg-gray-300 text-[#FFFFF0] font-bold py-2 px-4 rounded"
->
-  Soft aesthetic
-</button>
-
-
-    </div>
-  </div>
 
   <!-- Tone info -->
   <div>
-    <h2 class="text-xl font-semibold mb-4">Registreret tone</h2>
-    <div class="grid grid-cols-2 gap-4">
+    <h2 class="text-sm font-bold mt-5 ">Registreret tone</h2>
+    <div class="grid grid-cols-2  gap-4">
       <div>
-        <p class="text-sm text-[#262626]">Tone:</p>
-        <p class="text-3xl font-bold text-[#262626]" id="detectedNote">—</p>
+        <p class="text-sm text-gray-500">Tone:</p>
+        <p class="text-3xl font-bold text-gray-500" id="detectedNote">—</p>
       </div>
       <div>
-        <p class="text-sm text-[#262626]">Frekvens:</p>
-        <p class="text-3xl font-bold text-[#262626]">
+        <p class="text-sm text-gray-500">Frekvens:</p>
+        <p class="text-3xl font-bold text-gray-500">
           <span id="detectedFreq">—</span> Hz
         </p>
       </div>
@@ -113,8 +113,9 @@
 </div>
 
 <!-- A4 hvor SVG ikoner vises -->
-<div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 mt-8 max-w-4xl mx-auto">
-  <h2 class="text-xl text-[#262626] font-semibold mb-4">Dit musikstykke</h2>
+<div class="bg-[#FFFFF0] rounded-lg shadow-md p-6 mt-8 w-fit mx-auto">
+  <h2 class="text-xl text-[#262626] font-semibold mb-4">Dit musikstykke:</h2>
+
 
   <!-- Gem A4 som SVG knap -->
   <button 
@@ -123,10 +124,24 @@
     💾 Gem som SVG
   </button>
 
-  <!-- A4 fast størrelse -->
-  <div 
-    id="paper" 
-    class="bg-gray-50 p-4 rounded relative overflow-hidden"
-    style="width: 794px; height: 1123px; margin: auto; border: 1px solid #ddd;">
+<!-- A4 fast størrelse - LIGGENDE FORMAT -->
+<div 
+  id="paper" 
+  class="bg-gray-50 rounded relative overflow-hidden"
+  style="width: 1123px; height: 794px; margin: auto; border: 1px solid #ddd;">
+  
+  <!-- Tekstboks i midten med fleksibel bredde -->
+  <div class="absolute inset-0 flex items-center justify-center z-10">
+    
+    <div id="textBox" class="inline-block bg-gray-50 rounded-lg px-2 ">
+      <div
+        id="centerText"
+        contenteditable="true"
+          spellcheck="false"
+        class="text-center rounded text-6xl mt-3 font-bold leading-none outline-none whitespace-nowrap"
+        style="font-family: 'Acumin Pro Condensed', sans-serif;"
+      ></div>
+    </div>
+
   </div>
 </div>

@@ -7,3 +7,9 @@ body {
   font-family: system-ui, sans-serif;
   padding: 20px;
 }
+
+#centerText:empty::before {
+  content: "Skriv din tekst her...";
+  color: #666;
+  opacity: 0.5;
+}
